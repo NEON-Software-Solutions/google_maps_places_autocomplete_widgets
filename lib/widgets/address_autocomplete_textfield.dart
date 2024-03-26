@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_places_autocomplete_widgets/api/place_api_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'address_autocomplete_generic.dart';
@@ -165,6 +166,9 @@ class AddressAutocompleteTextField extends AddresssAutocompleteStatefulWidget {
   @override
   final ValueChanged<String>? onChanged;
 
+  @override
+  final PlaceApiProvider? placeApiProvider;
+
   const AddressAutocompleteTextField({
     super.key,
     required this.mapsApiKey,
@@ -209,6 +213,7 @@ class AddressAutocompleteTextField extends AddresssAutocompleteStatefulWidget {
     this.maxLength,
     this.maxLengthEnforcement,
     this.onChanged,
+    this.placeApiProvider,
   });
 
   @override

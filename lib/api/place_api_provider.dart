@@ -1,9 +1,24 @@
+// ignore_for_file: lines_longer_than_80_chars, avoid_dynamic_calls
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_maps_places_autocomplete_widgets/model/place.dart';
+import 'package:google_maps_places_autocomplete_widgets/model/suggestion.dart';
 import 'package:http/http.dart';
 
-import '/model/place.dart';
-import '/model/suggestion.dart';
+class PlacesApiParams {
+  PlacesApiParams({
+    required this.sessionToken,
+    required this.mapsApiKey,
+    this.componentCountry,
+    this.language,
+  });
+
+  final String sessionToken;
+  final String mapsApiKey;
+  final String? componentCountry;
+  final String? language;
+}
 
 /* FOR DEBUGGING */
 void printWrapped(String text) {
@@ -12,10 +27,10 @@ void printWrapped(String text) {
 }
 
 void printJson(dynamic json, {String? title}) {
-  JsonEncoder encoder = const JsonEncoder.withIndent('  ');
+  const encoder = JsonEncoder.withIndent('  ');
 
   // encode it to string
-  String prettyPrint = encoder.convert(json);
+  final prettyPrint = encoder.convert(json);
 
   if (title != null) {
     debugPrint(title);
@@ -27,15 +42,9 @@ const bool debugJson = false;
 /* END FOR DEBUGGING */
 
 class PlaceApiProvider {
+  PlaceApiProvider();
+
   final client = Client();
-
-  PlaceApiProvider(
-      this.sessionToken, this.mapsApiKey, this.compomentCountry, this.language);
-
-  final String sessionToken;
-  final String mapsApiKey;
-  final String? compomentCountry;
-  final String? language;
 
 /* Example JSON returned from Places autocomplete suggestions API request
     (ie.
@@ -97,67 +106,86 @@ result["predictions"] =
   
 ]
 */
-  ///[includeFullSuggestionDetails] if we should include ALL details that are returned in API suggestions.
-  ///   (This is sent as true when the `onInitialSuggestionClick` is in use)
-  ///[postalCodeLookup] if we should request `postal_code` type return information
-  ///   instead of address type information.
-  Future<List<Suggestion>> fetchSuggestions(String input,
-      {bool includeFullSuggestionDetails = false,
-      bool postalCodeLookup = false}) async {
-    final Map<String, dynamic> parameters = <String, dynamic>{
+
+  /// [includeFullSuggestionDetails] if we should include ALL details that are
+  /// returned in API suggestions.
+  /// (This is sent as true when the `onInitialSuggestionClick` is in use)
+  /// [postalCodeLookup] if we should request `postal_code` type return information
+  /// instead of address type information.
+  Future<List<Suggestion>> fetchSuggestions(
+    String input, {
+    required PlacesApiParams params,
+    bool includeFullSuggestionDetails = false,
+    bool postalCodeLookup = false,
+  }) async {
+    final parameters = <String, dynamic>{
       'input': input,
       'types': postalCodeLookup
           ? 'postal_code'
           : 'address', // this is for looking up fully qualified addresses
       // Could be used for ZIP lookups//   'types': 'postal_code',
-      'key': mapsApiKey,
-      'sessiontoken': sessionToken
+      'key': params.mapsApiKey,
+      'sessiontoken': params.sessionToken,
     };
 
-    if (language != null) {
-      parameters.addAll(<String, dynamic>{'language': language});
+    if (params.language != null) {
+      parameters.addAll(<String, dynamic>{'language': params.language});
     }
-    if (compomentCountry != null) {
-      parameters
-          .addAll(<String, dynamic>{'components': 'country:$compomentCountry'});
+    if (params.componentCountry != null) {
+      parameters.addAll(<String, dynamic>{
+        'components': 'country:${params.componentCountry}',
+      });
     }
 
-    final Uri request = Uri(
-        scheme: 'https',
-        host: 'maps.googleapis.com',
-        path: '/maps/api/place/autocomplete/json',
-        queryParameters: parameters);
+    final request = Uri(
+      scheme: 'https',
+      host: 'maps.googleapis.com',
+      path: '/maps/api/place/autocomplete/json',
+      queryParameters: parameters,
+    );
 
     final response = await client.get(request);
 
     if (response.statusCode == 200) {
-      final result = json.decode(response.body);
+      final result = json.decode(response.body) as Map<String, dynamic>;
       if (result['status'] == 'OK') {
         if (debugJson) {
-          printJson(result['predictions'],
-              title: 'GOOGLE MAP API RETURN VALUE result["predictions"]');
+          printJson(
+            result['predictions'],
+            title: 'GOOGLE MAP API RETURN VALUE result["predictions"]',
+          );
         }
 
         // compose suggestions in a list
-        return result['predictions'].map<Suggestion>((p) {
+        return (result['predictions'] as List<Map<String, dynamic>>)
+            .map<Suggestion>((p) {
+          final placeID = p['place_id'] as String;
+          final description = p['description'] as String;
+
           if (includeFullSuggestionDetails) {
             // Package everything useful from API json
-            final mainText = p['structured_formatting']?['main_text'];
-            final secondaryText = p['structured_formatting']?['secondary_text'];
-            final terms = p['terms']
+            final mainText =
+                (p['structured_formatting'] as Map?)?['main_text'] as String?;
+            final secondaryText = (p['structured_formatting']
+                as Map?)?['secondary_text'] as String?;
+            final terms = (p['terms'] as List<Map<String, dynamic>>)
                 .map<String>((term) => term['value'] as String)
                 .toList();
-            final types =
-                p['types'].map<String>((atype) => atype as String).toList();
+            final types = (p['types'] as List<dynamic>? ?? <dynamic>[])
+                .map<String>((atype) => atype as String)
+                .toList();
 
-            return Suggestion(p['place_id'], p['description'],
-                mainText: mainText,
-                secondaryText: secondaryText,
-                terms: terms,
-                types: types);
+            return Suggestion(
+              placeID,
+              description,
+              mainText: mainText,
+              secondaryText: secondaryText,
+              terms: terms,
+              types: types,
+            );
           } else {
             // just use the simple Suggestion parts we need
-            return Suggestion(p['place_id'], p['description']);
+            return Suggestion(placeID, description);
           }
         }).toList();
       }
@@ -269,23 +297,28 @@ result["result"]
   */
   ///Requests full address info from Google Places API for the specified
   ///[placeId] and returns a [Place] object returned info.
-  Future<Place> getPlaceDetailFromId(String placeId) async {
+  Future<Place> getPlaceDetailFromId({
+    required PlacesApiParams params,
+    required String placeId,
+  }) async {
     // if you want to get the details of the selected place by place_id
-    final Map<String, dynamic> parameters = <String, dynamic>{
+    final parameters = <String, dynamic>{
       'place_id': placeId,
       'fields': 'name,formatted_address,address_component,geometry',
-      'key': mapsApiKey,
-      'sessiontoken': sessionToken
+      'key': params.mapsApiKey,
+      'sessiontoken': params.sessionToken,
     };
-    final Uri request = Uri(
-        scheme: 'https',
-        host: 'maps.googleapis.com',
-        path: '/maps/api/place/details/json',
 
-        //PlaceApiNew     host: 'places.googleapis.com',
-        //PlaceApiNew     path: '/v1/places/$placeId',
+    final request = Uri(
+      scheme: 'https',
+      host: 'maps.googleapis.com',
+      path: '/maps/api/place/details/json',
 
-        queryParameters: parameters);
+      //PlaceApiNew     host: 'places.googleapis.com',
+      //PlaceApiNew     path: '/v1/places/$placeId',
+
+      queryParameters: parameters,
+    );
 
     if (debugJson) {
       debugPrint(request.toString());
@@ -300,57 +333,65 @@ result["result"]
     PlaceApiNew */
 
     if (response.statusCode == 200) {
-      final result = json.decode(response.body);
-      if (result['status'] == 'OK') {
+      final rawResult = json.decode(response.body) as Map<String, dynamic>;
+
+      if (rawResult['status'] == 'OK') {
         if (debugJson) {
-          printJson(result['result'],
-              title: 'GOOGLE MAP API RETURN VALUE result["result"]');
+          printJson(
+            rawResult['result'],
+            title: 'GOOGLE MAP API RETURN VALUE result["result"]',
+          );
         }
-        final components =
-            result['result']['address_components'] as List<dynamic>;
+
+        final result = rawResult['result'] as Map<String, dynamic>;
+
+        final components = result['address_components'] as List<dynamic>;
 
         // build result
-        final place = Place();
+        final place = Place()
+          ..formattedAddress = result['formatted_address'] as String?
+          ..name = result['name'] as String?
+          ..lat = result['geometry']['location']['lat'] as double
+          ..lng = result['geometry']['location']['lng'] as double;
 
-        place.formattedAddress = result['result']['formatted_address'];
-        place.name = result['result']['name'];
-        place.lat = result['result']['geometry']['location']['lat'] as double;
-        place.lng = result['result']['geometry']['location']['lng'] as double;
+        for (final component in components) {
+          component as Map<String, dynamic>;
 
-        for (var component in components) {
-          final List type = component['types'];
+          final type = component['types'] as List<dynamic>;
           if (type.contains('street_address')) {
-            place.streetAddress = component['long_name'];
+            place.streetAddress = component['long_name'] as String?;
           }
           if (type.contains('street_number')) {
-            place.streetNumber = component['long_name'];
+            place.streetNumber = component['long_name'] as String?;
           }
           if (type.contains('route')) {
-            place.street = component['long_name'];
-            place.streetShort = component['short_name'];
+            place
+              ..street = component['long_name'] as String?
+              ..streetShort = component['short_name'] as String?;
           }
           if (type.contains('sublocality') ||
               type.contains('sublocality_level_1')) {
-            place.vicinity = component['long_name'];
+            place.vicinity = component['long_name'] as String?;
           }
           if (type.contains('locality')) {
-            place.city = component['long_name'];
+            place.city = component['long_name'] as String?;
           }
           if (type.contains('administrative_area_level_2')) {
-            place.county = component['long_name'];
+            place.county = component['long_name'] as String?;
           }
           if (type.contains('administrative_area_level_1')) {
-            place.state = component['long_name'];
-            place.stateShort = component['short_name'];
+            place
+              ..state = component['long_name'] as String?
+              ..stateShort = component['short_name'] as String?;
           }
           if (type.contains('country')) {
-            place.country = component['long_name'];
+            place.country = component['long_name'] as String?;
           }
           if (type.contains('postal_code')) {
-            place.zipCode = component['long_name'];
+            place.zipCode = component['long_name'] as String?;
           }
           if (type.contains('postal_code_suffix')) {
-            place.zipCodeSuffix = component['long_name'];
+            place.zipCodeSuffix = component['long_name'] as String?;
           }
         }
 
@@ -365,7 +406,7 @@ result["result"]
         }
         return place;
       }
-      throw Exception(result['error_message']);
+      throw Exception((rawResult as Map)['error_message']);
     } else {
       throw Exception('Failed to fetch suggestion');
     }

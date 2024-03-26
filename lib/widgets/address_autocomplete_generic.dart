@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_places_autocomplete_widgets/api/place_api_provider.dart';
 
 import '/model/suggestion.dart';
 import '/model/place.dart';
@@ -80,6 +81,12 @@ abstract class AddresssAutocompleteStatefulWidget extends StatefulWidget {
 
   abstract final TextEditingController? controller;
 
+  /// A custom API provider for the Place API. If not provided, the default
+  /// PlaceApiProvider will be used.
+  /// This is helpful for web apps, because the Google Api throws a CORS error
+  /// In that case, you should either use a proxy or an edge function
+  abstract final PlaceApiProvider? placeApiProvider;
+
   // These correspond to arguments supported by standard Flutter
   // TextField and TextFormField
   abstract final String? initialValue;
@@ -126,8 +133,13 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
         widget.controller ?? TextEditingController(text: widget.initialValue);
     focusNode = widget.focusNode ?? FocusNode();
 
-    addressService = AddressService(sessionToken, widget.mapsApiKey,
-        widget.componentCountry, widget.language);
+    addressService = AddressService(
+      sessionToken,
+      widget.mapsApiKey,
+      widget.componentCountry,
+      widget.language,
+      customApiClient: widget.placeApiProvider,
+    );
 
     focusNode.addListener(showOrHideOverlayOnFocusChange);
   }
@@ -180,31 +192,32 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
   }
 
   void hideOverlay({bool suggestionHasBeenSelected = false}) {
-    if(entry != null) {
+    if (entry != null) {
       entry?.remove();
       entry = null;
-debugPrint('hideOverlay suggestionHasBeenSelected=$suggestionHasBeenSelected');
-      if(!suggestionHasBeenSelected) {
+      debugPrint(
+          'hideOverlay suggestionHasBeenSelected=$suggestionHasBeenSelected');
+      if (!suggestionHasBeenSelected) {
         triggerNoSuggestionCallback();
       }
     }
   }
 
   void triggerNoSuggestionCallback() {
-    if(widget.onFinishedEditingWithNoSuggestion != null) {
+    if (widget.onFinishedEditingWithNoSuggestion != null) {
       widget.onFinishedEditingWithNoSuggestion!(controller?.text ?? '');
     }
   }
+
   void _clearText() {
     setState(() {
       if (widget.onClearClick != null) {
         widget.onClearClick!();
       }
       controller?.clear();
-      if(!focusNode.hasFocus) {
+      if (!focusNode.hasFocus) {
         triggerNoSuggestionCallback();
-      }
-      else {
+      } else {
         focusNode.unfocus();
       }
       suggestions = [];

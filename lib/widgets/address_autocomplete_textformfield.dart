@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_places_autocomplete_widgets/api/place_api_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'address_autocomplete_generic.dart';
@@ -181,6 +182,9 @@ class AddressAutocompleteTextFormField
   @override
   final ValueChanged<String>? onChanged;
 
+  @override
+  final PlaceApiProvider? placeApiProvider;
+
   final GestureTapCallback? onTap;
   final TapRegionCallback? onTapOutside;
   final VoidCallback? onEditingComplete;
@@ -282,6 +286,7 @@ class AddressAutocompleteTextFormField
     this.enableIMEPersonalizedLearning = true,
     this.mouseCursor,
     this.contextMenuBuilder,
+    this.placeApiProvider,
   });
 
   @override

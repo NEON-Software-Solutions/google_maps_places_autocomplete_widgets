@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:google_maps_places_autocomplete_widgets/api/place_api_provider.dart';
 
 import '/model/suggestion.dart';
@@ -176,9 +177,14 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
       if (context.findRenderObject() != null) {
         final overlay = Overlay.of(context);
         final RenderBox renderBox = context.findRenderObject() as RenderBox;
+        final position = renderBox.localToGlobal(Offset.zero);
         final size = renderBox.size;
+        final remainingHeight =
+            MediaQuery.of(context).size.height - position.dy - size.height;
+
         entry = OverlayEntry(
             builder: (overlayBuildContext) => Positioned(
+                  height: remainingHeight,
                   width: size.width,
                   child: CompositedTransformFollower(
                       link: layerLink,
@@ -227,6 +233,7 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
   /* ALTERNATE using ListView builder.. */
   Widget get buildListViewerBuilder {
     return ListView.builder(
+      physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.zero,
       shrinkWrap: true,
       itemCount: suggestions.length,
@@ -306,7 +313,7 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
   old mechanism */
 
   Widget buildOverlay() => TextFieldTapRegion(
-      child: Material(
+        child: Material(
           color: widget.suggestionsOverlayDecoration != null
               ? Colors.transparent
               : Colors.white,
@@ -316,7 +323,9 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
                 widget.suggestionsOverlayDecoration ?? const BoxDecoration(),
             child: Column(
               children: [
-                buildListViewerBuilder, //...buildList(),
+                Flexible(
+                  child: buildListViewerBuilder,
+                ),
                 if (widget.showGoogleTradeMark)
                   const Padding(
                     padding: EdgeInsets.all(4.0),
@@ -324,7 +333,9 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
                   )
               ],
             ),
-          )));
+          ),
+        ),
+      );
 
   String _lastText = '';
   Future<void> searchAddress(String text) async {

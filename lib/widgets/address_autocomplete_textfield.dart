@@ -169,6 +169,9 @@ class AddressAutocompleteTextField extends AddresssAutocompleteStatefulWidget {
   @override
   final PlaceApiProvider? placeApiProvider;
 
+  @override
+  final double? maxOverlayHeight;
+
   const AddressAutocompleteTextField({
     super.key,
     required this.mapsApiKey,
@@ -194,6 +197,7 @@ class AddressAutocompleteTextField extends AddresssAutocompleteStatefulWidget {
     this.debounceTime = 600,
     this.componentCountry,
     this.language,
+    this.maxOverlayHeight,
 
     // inherited TextField arguments
     this.keyboardType,

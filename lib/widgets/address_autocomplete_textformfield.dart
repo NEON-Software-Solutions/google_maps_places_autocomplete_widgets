@@ -185,6 +185,9 @@ class AddressAutocompleteTextFormField
   @override
   final PlaceApiProvider? placeApiProvider;
 
+  @override
+  final double? maxOverlayHeight;
+
   final GestureTapCallback? onTap;
   final TapRegionCallback? onTapOutside;
   final VoidCallback? onEditingComplete;
@@ -239,6 +242,7 @@ class AddressAutocompleteTextFormField
     this.postalCodeLookup = false,
     this.componentCountry,
     this.language,
+    this.maxOverlayHeight,
 
     // arg passthroughs to TextFormField - same defaults as TextFormField
     this.initialValue,

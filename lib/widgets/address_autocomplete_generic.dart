@@ -1,10 +1,10 @@
 library google_maps_places_autocomplete_widgets;
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:google_maps_places_autocomplete_widgets/api/place_api_provider.dart';
 
 import '/model/suggestion.dart';
@@ -81,6 +81,8 @@ abstract class AddresssAutocompleteStatefulWidget extends StatefulWidget {
   abstract final int debounceTime;
 
   abstract final TextEditingController? controller;
+
+  abstract final double? maxOverlayHeight;
 
   /// A custom API provider for the Place API. If not provided, the default
   /// PlaceApiProvider will be used.
@@ -184,7 +186,7 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
 
         entry = OverlayEntry(
             builder: (overlayBuildContext) => Positioned(
-                  height: remainingHeight,
+                  height: min(widget.maxOverlayHeight ?? 300, remainingHeight),
                   width: size.width,
                   child: CompositedTransformFollower(
                       link: layerLink,

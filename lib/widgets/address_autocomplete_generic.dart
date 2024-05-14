@@ -1,6 +1,7 @@
 library google_maps_places_autocomplete_widgets;
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -80,6 +81,8 @@ abstract class AddresssAutocompleteStatefulWidget extends StatefulWidget {
   abstract final int debounceTime;
 
   abstract final TextEditingController? controller;
+
+  abstract final double? maxOverlayHeight;
 
   /// A custom API provider for the Place API. If not provided, the default
   /// PlaceApiProvider will be used.
@@ -176,9 +179,14 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
       if (context.findRenderObject() != null) {
         final overlay = Overlay.of(context);
         final RenderBox renderBox = context.findRenderObject() as RenderBox;
+        final position = renderBox.localToGlobal(Offset.zero);
         final size = renderBox.size;
+        final remainingHeight =
+            MediaQuery.of(context).size.height - position.dy - size.height;
+
         entry = OverlayEntry(
             builder: (overlayBuildContext) => Positioned(
+                  height: min(widget.maxOverlayHeight ?? 300, remainingHeight),
                   width: size.width,
                   child: CompositedTransformFollower(
                       link: layerLink,
@@ -227,6 +235,7 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
   /* ALTERNATE using ListView builder.. */
   Widget get buildListViewerBuilder {
     return ListView.builder(
+      physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.zero,
       shrinkWrap: true,
       itemCount: suggestions.length,
@@ -306,7 +315,7 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
   old mechanism */
 
   Widget buildOverlay() => TextFieldTapRegion(
-      child: Material(
+        child: Material(
           color: widget.suggestionsOverlayDecoration != null
               ? Colors.transparent
               : Colors.white,
@@ -316,7 +325,9 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
                 widget.suggestionsOverlayDecoration ?? const BoxDecoration(),
             child: Column(
               children: [
-                buildListViewerBuilder, //...buildList(),
+                Flexible(
+                  child: buildListViewerBuilder,
+                ),
                 if (widget.showGoogleTradeMark)
                   const Padding(
                     padding: EdgeInsets.all(4.0),
@@ -324,7 +335,9 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
                   )
               ],
             ),
-          )));
+          ),
+        ),
+      );
 
   String _lastText = '';
   Future<void> searchAddress(String text) async {

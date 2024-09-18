@@ -186,7 +186,9 @@ mixin SuggestionOverlayMixin<T extends AddresssAutocompleteStatefulWidget>
 
         entry = OverlayEntry(
             builder: (overlayBuildContext) => Positioned(
-                  height: min(widget.maxOverlayHeight ?? 300, remainingHeight),
+                  height: suggestions.isEmpty
+                      ? 0
+                      : min(widget.maxOverlayHeight ?? 300, remainingHeight),
                   width: size.width,
                   child: CompositedTransformFollower(
                       link: layerLink,

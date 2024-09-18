@@ -157,7 +157,8 @@ result["predictions"] =
         }
 
         // compose suggestions in a list
-        return (result['predictions'] as List<Map<String, dynamic>>)
+        return (result['predictions'] as List<dynamic>)
+            .cast<Map<String, dynamic>>()
             .map<Suggestion>((p) {
           final placeID = p['place_id'] as String;
           final description = p['description'] as String;
@@ -168,7 +169,8 @@ result["predictions"] =
                 (p['structured_formatting'] as Map?)?['main_text'] as String?;
             final secondaryText = (p['structured_formatting']
                 as Map?)?['secondary_text'] as String?;
-            final terms = (p['terms'] as List<Map<String, dynamic>>)
+            final terms = (p['terms'] as List<dynamic>)
+                .cast<Map<String, dynamic>>()
                 .map<String>((term) => term['value'] as String)
                 .toList();
             final types = (p['types'] as List<dynamic>? ?? <dynamic>[])
